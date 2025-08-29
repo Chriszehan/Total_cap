@@ -1078,50 +1078,516 @@ class Person {
 
 
 
+## 静态字段和静态方法
+
+class 中定义的字段，被称之为实例字段。实例字段的特点是，每个实例都有独立的字段，各个实例的同名字段互相不影响。
+
+还有一种字段，使用static修饰的字段，称为静态字段：static field。
+
+实例字段在每个实例中都有一个独立“空间”，但是静态字段只有一个共享“空间”，所有的实例都是共享某个字段
+
+class Person{
+
+  public String name;
+
+  public static int number;
+
+}
 
 
+对于静态字段，无论修改哪个实例的静态字段，效果都是一样的：所有实例的静态字段都被修改了，原因是静态字段并不属于实例：
+
+        ┌──────────────────┐
+ming ──▶│Person instance   │
+        ├──────────────────┤
+        │name = "Xiao Ming"│
+        │age = 12          │
+        │number ───────────┼──┐    ┌─────────────┐
+        └──────────────────┘  │    │Person class │
+                              │    ├─────────────┤
+                              ├───▶│number = 99  │
+        ┌──────────────────┐  │    └─────────────┘
+hong ──▶│Person instance   │  │
+        ├──────────────────┤  │
+        │name = "Xiao Hong"│  │
+        │age = 15          │  │
+        │number ───────────┼──┘
+        └──────────────────┘
+
+实际指向的都是Person class的静态字段。因此不推荐使用 实例变量.静态字段 去访问静态方法。
+
+因为在运行中 实例对下并没有静态字段，而是由于编译器可以根据实例类型自动转换为 类名.静态字段 来访问静态对象。
+
+推荐使用类名访问静态字段，这样可以理解为这个类本身具有字段。
+
+### 静态方法
+与静态字段对应，有静态方法。用static修饰的方法--静态方法
+
+调用实例方法必须通过一个实例变量，而调用静态方法则不需要实例变量，通过类名就可以调用。
+
+// static method
+public class Main{
+  public static void main(String[] args){
+    Person.setNumber(99);
+    Sout(Person.number);
+  }
+}
+
+class Person{
+  public static int number;
+
+  public static int setNumber(int value){
+      number = value;
+  }
+}
+
+因为静态方法属于class 而不属于实例。因此，静态方法内部，无法访问this变量，也无法访问实例字段，他只能访问静态字段。
+
+通过实例变量也可以调用静态方法，但这只是编译器自动转写为类名调用。
+
+通常情况下，通过实例变量访问静态字段和静态方法，会出现一个编译警告。
+
+静态方法经常用于工具类。例如：
+
+Arrays.sort();
+Math.random();
+
+### 接口的静态字段
+接口不能定义实例字段，但interface是可以有静态字段的，且静态字段必须为final类型：
+
+public interface Person{
+    public static final int MALE = 1;
+    public static final int FEMALE = 2;
+}
+
+实际上，因为interface的字段只能是public static final类型，所以我们可以把这些修饰符都去掉，上述代码可以简写为：
+
+public interface Person {
+    // 编译器会自动加上public static final:
+    int MALE = 1;
+    int FEMALE = 2;
+}
+
+编译器会自动把该字段变为public static final类型。
+
+## 作用域
+
+public、protected、private
+
+### public
+
+定义为public的class、interface可以被其他任何类访问：
+
+package abc;
+
+public class Hello {
+    public void hi() {
+    }
+}
+
+Hello是public 因此可以被其他包的类访问：
+package xxx;
+class Main{
+  void foo(){
+    Hello h = new Hello();
+  }
+}
+
+定义为public 的 field、method可以被其他类访问，前提是首先有访问class的权限
+
+### private
+
+定义为private的field、method无法被其他类访问：
+
+package abc;
+
+public class Hello {
+    // 不能被其他类调用:
+    private void hi() {
+    }
+
+    public void hello() {
+        this.hi();
+    }
+}
+
+实际上，private访问权限被限定在class的内部，而且与方法声明顺序无关。推荐把private方法放在后面，因为public方法定义了对外提供的功能，阅读代码时，应该优先关注public方法
 
 
+由于JAVA支持嵌套类，如果一个类的内部还定义了一个嵌套类，那么嵌套类拥有访问private的权限：
+
+// private
+public class Main {
+    public static void main(String[] args) {
+        Inner i = new Inner();
+        i.hi();
+    }
+
+    // private方法:
+    private static void hello() {
+        System.out.println("private hello!");
+    }
+
+    // 静态内部类:
+    static class Inner {
+        public void hi() {
+            Main.hello();
+        }
+    }
+}
+
+定义在一个class内部的class称为嵌套类（nested class）
+
+### protected
+protected 作用于继承关系。定义为protected的字段和方法可以被子类访问，以及子类的子类：
+
+package abc;
+
+public class Hello {
+    // protected方法:
+    protected void hi() {
+    }
+}
+
+上面的protect方法可以被继承的类访问：
+
+package xyz;
+
+class Main extends Hello {
+    void foo() {
+        // 可以访问protected方法:
+        hi();
+    }
+}
+
+### package
+最后，包作用域是指一个类允许访问同一个package的没有public、private修饰的class，以及没有public、protected、private修饰的字段和方法。
+
+package abc;
+// package权限的类:
+class Hello {
+    // package权限的方法:
+    void hi() {
+    }
+}
+
+只要在同一个包，就可以访问package权限的class、field和method
+
+### 局部变量
+在方法内部定义的变量称之为局部变量，局部变量作用域从变量声明处开始到对应的块结束。方法参数也是局部变量。
+
+package abc;
+
+public class Hello {
+    void hi(String name) { // 1
+        String s = name.toLowerCase(); // 2
+        int len = s.length(); // 3
+        if (len < 10) { // 4
+            int p = 10 - len; // 5
+            for (int i=0; i<10; i++) { // 6
+                System.out.println(); // 7
+            } // 8
+        } // 9
+    } // 10
+}
+
+我们观察上面的hi()方法代码：
+
+方法参数name是局部变量，它的作用域是整个方法，即1 ~ 10；
+
+变量s的作用域是定义处到方法结束，即2 ~ 10；
+
+变量len的作用域是定义处到方法结束，即3 ~ 10；
+
+变量p的作用域是定义处到if块结束，即5 ~ 9；
+
+变量i的作用域是for循环，即6 ~ 8。
+
+使用局部变量时，应该尽可能把局部变量的作用域缩小，尽可能延后声明局部变量。
+
+### final
+
+final与访问权限不冲突，有很多作用。
+
+用final修饰class可以阻止被继承：
+
+package abc;
+
+// 无法被继承:
+public final class Hello {
+    private int n = 0;
+    protected void hi(int t) {
+        long i = t;
+    }
+}
+
+用final 修饰method可以阻止被子类覆写
+
+package abc;
+
+public class Hello {
+    // 无法被覆写:
+    protected final void hi() {
+    }
+}
+
+用final修饰field可以阻止被重新赋值：
+
+package abc;
+public class Hello{
+  private final int n = 0;
+  protected void hi(){
+    this.n = 1;
+  }
+}
+
+用final修饰局部变量可以阻止被重新赋值：
+package abc;
+
+public class Hello {
+    protected void hi(final int t) {
+        t = 1; // error!
+    }
+}
+
+### biji
+
+如果不确定是否需要public，就不声明为public，即尽可能少地暴露对外的字段和方法。
+
+把方法定义为package权限有助于测试，因为测试类和被测试类只要位于同一个package，测试代码就可以访问被测试类的package权限方法。
+
+一个.java文件只能包含一个public类，但可以包含多个非public类。如果有public类，文件名必须和public类的名字相同。
+
+## 内部类
+
+通常情况下，把不同的类组织在不同的包下面，对于一个包下面的类来说，他们是同一层次，没有父子关系。
+
+java.lang
+├── Math
+├── Runnable
+├── String
+└── ...
+
+还有一种类，它被定义在另一个类的内部，所以称为内部类（NestedClass）。
+
+Java的内部类分为好几种，通常情况用得不多，但也需要了解
+
+### Inner Class
+如果一个类定义在另一个类的内部，这个类就是innerClass：
+class Outer {
+    class Inner {
+        // 定义了一个Inner Class
+    }
+}
+
+上述定义的Outer是一个普通类，而Inner是一个Inner class，它与普通类有个最大的不同，就是Ineer class的实例不能单独存在，必须依附于一个Outer Class的实例。实例代码如下：
+
+// inner class
+public class Main {
+    public static void main(String[] args) {
+        Outer outer = new Outer("Nested"); // 实例化一个Outer
+        Outer.Inner inner = outer.new Inner(); // 实例化一个Inner
+        inner.hello();
+    }
+}
+
+class Outer {
+    private String name;
+
+    Outer(String name) {
+        this.name = name;
+    }
+
+    class Inner {
+        void hello() {
+            System.out.println("Hello, " + Outer.this.name);
+        }
+    }
+}
+
+观察上述代码，要实例化一个Inner，我们必须要先创建一个Outer的实例，然后调用Outer实例的new来创建Inner实例：
+
+Outer.Inner inner = Outer.new Inner();
+
+这是因为Inner class除了有一个this指向自己，还隐含地持有一个Outer Class实例，可以用Outer.this 访问这个实例。所以实例化一个Inner class不能脱离Outer实例。
+
+Inner Class和普通Class相比，除了能引用Outer实例外，还有一个额外的“特权”，也就是可以修改Outer class的private字段 因为Innerclass的作用域在Outerclass内部，所以能访问Outerclass的private方法和字段。
+
+观察Java编译器编译后的.class 文件可以发现，Outer类被编译为Outer.class,而Inner类被编译为Outer$Inner.class
+
+### Anonymous Class
+还有一种定义Inner class的方法，它不需要在Outer class中明确定义这个Class，而是在方法内部，通过匿名类（Anonymous Class）来定义。示例下：
+
+// Anonymous Class
+public class Main {
+    public static void main(String[] args) {
+        Outer outer = new Outer("Nested");
+        outer.asyncHello();
+    }
+}
+
+class Outer {
+    private String name;
+
+    Outer(String name) {
+        this.name = name;
+    }
+
+    void asyncHello() {
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("Hello, " + Outer.this.name);
+            }
+        };
+        new Thread(r).start();
+    }
+}
+
+观察asycHello（）方法 ，我们在内部实例化了一个Runnable。Runnable本身是接口，接口时不能实例化，所以这里实际上是定义了一个实现Runnable接口的匿名类，并通过new实例化该匿名类，转型为Runnable。在定义匿名类的时候就必须实例化它，定义匿名类的写法如下：
+
+Runnable r = new Runnable(){
+
+    // 实现必要的抽象方法...
+};
+
+匿名类核Inner class一样 可以访问Outer class的private 字段和方法。之所以我们要定义匿名类，是因为我们在这里通常不关心类名，比直接定义Inner class可以少写很多代码。
+
+观察JAVA编译器编译后的.class 文件可以发现，Outer类被编译为Outer.class 如果有多个匿名类，Java编译器会将每个匿名类依次命名为Outer$1、Outer$2、Outer$3····
+
+除了接口外，匿名类也完全可以继承自普通类。观察一下代码：
+
+// Anonymous Class
+import java.util.HashMap;
+
+public class Main {
+    public static void main(String[] args) {
+        HashMap<String, String> map1 = new HashMap<>();
+        HashMap<String, String> map2 = new HashMap<>() {}; // 匿名类!
+        HashMap<String, String> map3 = new HashMap<>() {
+            {
+                put("A", "1");
+                put("B", "2");
+            }
+        };
+        System.out.println(map3.get("A"));
+    }
+}
+
+map1 是一个普通的HashMap实例，但map2是一个匿名类实例，只是该匿名类继承子HashMap。map3也是继承自一个Hashmap的匿名类实例，并且添加了static 代码块来初始化数据。观察编译输出可发下Main$1.class和Main$2.class两个匿名类文件。
+
+### Static Nested Class
+
+最后一种内部类和Inner class类似，但是使用了static修饰 称为静态内部类（static nested class）：
+
+// Static Nested Class
+public class Main {
+    public static void main(String[] args) {
+        Outer.StaticNested sn = new Outer.StaticNested();
+        sn.hello();
+    }
+}
+
+class Outer {
+    private static String NAME = "OUTER";
+
+    private String name;
+
+    Outer(String name) {
+        this.name = name;
+    }
+
+    static class StaticNested {
+        void hello() {
+            System.out.println("Hello, " + Outer.NAME);
+        }
+    }
+}
+
+用Static修饰的内部类和Innerclass有很大不同，它不再依附于Outer的实例，而是一个完全独立的类，因此无法引用Outer.this，但它可以访问Outer的private静态字段和静态方法。如果把StaticNested移到Outer之外，就失去了访问private的权限。
+
+## class版本
+
+JDK版本 也就是JVM版本，更准确地说是java.exe程序的版本
+
+低版本可以再高版本上运行 但是高版本不能再低版本运行
+
+但是可以在高版本的环境中指定输出一个兼容低版本的文件
+
+指定编译输出有两种方式，一种是在javac命令行中用参数--release设置：
+$javac --release 11 Main.java
+参数--release 11表示源码兼容Java 11，编译的class输出版本为Java 11兼容，即class版本55。
+
+第二种方式是用参数--source指定源码版本，用参数--target指定class版本：
+$javac --source 9 --target 11 Main.java
+上述命令如果使用Java 17的JDK编译，它会把源码视为Java 9兼容版本，并输出class为Java 11兼容版本。注意--release参数和--source --target参数只能二选一，不能同时设置。
 
 
+## 模块
 
+.class 文件时JVM看到的最小可执行文件，而一个大型程序需要编写很多的class，并生成一堆.class文件，很不便于管理，所以，jar文件就是class文件的容器。
 
+在Java 9 之前，一个大型java程序会生成自己的jar文件，同时引用依赖的第三方jar文件，而JVM自带的java标准库实际也是以jar文件形式存放的，这个文件交rt.jar
 
+如是自己开发的程序，除了自己的app.jar之外，还需要第三方的jar包，运行一个java程序，一般来说
 
+java -cp app.jar:a.jar:b.jar:c.jar com.liaoxuefeng.sample.Main
 
+如果漏写了某个运行时需要用到的jar，那么在运行期极有可能抛出ClassNotFoundException。
 
+所以，jar只是用于存放class的容器，它并不关心class之间的依赖。
 
+从java 9 之后,为了解决依赖的问题 引入module 以.jmod拆分rt.jar
 
+这些.jmod文件每一个都是一个模块，模块名就是文件名。例如：模块java.base对应的文件就是java.base.jmod。
 
+模块之间的依赖关系已经被写入到模块内的module-info.class文件了。
 
+所有的模块都直接或间接地依赖java.base模块，只有java.base模块不依赖任何模块，它可以被看作是“根模块”，好比所有的类都是从Object直接或间接继承而来。
 
+把一堆class封装为jar仅仅是一个打包的过程，而把一堆class封装为模块则不但需要打包，还需要写入依赖关系，并且还可以包含二进制代码（通常是JNI扩展）。
 
+此外，模块支持多版本，即在同一个模块中可以为不同的JVM提供不同的版本。
 
+### 编写模块
+首先创建模块和原有创建java项目是完全一样的，以oop-module工程为例，目录结构如下：
+oop-module
+├── bin
+├── build.sh
+└── src
+    ├── com
+    │   └── itranswarp
+    │       └── sample
+    │           ├── Greeting.java
+    │           └── Main.java
+    └── module-info.java
 
+  其中，bin目录存放编译后的class文件，src目录存放源码，按包名的目录结构存放，仅仅在src目录下多一个module-info.java这个文件，这就是模块的描述文件。
 
+module hello.world {
+	requires java.base; // 可不写，任何模块都会自动引入java.base
+	requires java.xml;
+}
 
+其中，module是关键字，后面的hello.world是模块名称 它的命名规范与包一致。花括号的requires xxx;表示这个模块需要引用的其他模块名称。
 
+除了java.base可以被自动映入外，这里我们引入了一个java.xml模块。
 
+当我们使用模块声明了依赖关系后，才能使用引入的模块。例如  Main.java 代码如下：
 
+package com.itranswarp.sample;
 
+// 必须引入java.xml模块后才能使用其中的类:
+import javax.xml.XMLConstants;
 
+public class Main {
+	public static void main(String[] args) {
+		Greeting g = new Greeting();
+		System.out.println(g.hello(XMLConstants.XML_NS_PREFIX));
+	}
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+如果把requires java.xml从module-info中去掉则会报错
 
 
 
